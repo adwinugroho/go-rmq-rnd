@@ -15,6 +15,7 @@ import (
 	"github.com/go-rmq-rnd/consumer/config"
 	"github.com/go-rmq-rnd/consumer/internal/server"
 	"github.com/joho/godotenv"
+	"github.com/streadway/amqp"
 )
 
 func init() {
@@ -80,25 +81,32 @@ func main() {
 				stop = true
 			case msg := <-d:
 				message := msg
+				// count := 1
+				arrMessage := make([]amqp.Delivery, 0)
+				arrMessage = append(arrMessage, message)
 				wp.Submit(func() {
+					if len(arrMessage) > 2 {
+						log.Println("start to processing 100 message:", len(arrMessage))
+						for _, eachMessage := range arrMessage {
+							var messageBody map[string]interface{}
+							if err := json.Unmarshal(eachMessage.Body, &messageBody); err != nil {
+								message.Ack(false)
+								log.Println("error unmarshalling payload", err)
+								return
+							}
+							log.Println("message number 1:", eachMessage)
+							// var payload map[string]interface{}
+							// data, _ := json.Marshal(messageBody.Data)
+							// if err := json.Unmarshal(data, &payload); err != nil {
+							// 	message.Ack(false)
+							// 	log.Println("error extracting payload data", err)
+							// 	return
+							// }
 
-					var messageBody map[string]interface{}
-					if err := json.Unmarshal(message.Body, &messageBody); err != nil {
-						message.Ack(false)
-						log.Println("error unmarshalling payload", err)
-						return
+							eachMessage.Ack(false)
+						}
+
 					}
-
-					// var payload map[string]interface{}
-					// data, _ := json.Marshal(messageBody.Data)
-					// if err := json.Unmarshal(data, &payload); err != nil {
-					// 	message.Ack(false)
-					// 	log.Println("error extracting payload data", err)
-					// 	return
-					// }
-
-					message.Ack(false)
-
 				})
 			}
 
